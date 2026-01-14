@@ -296,12 +296,23 @@ body {
   box-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
 }
 
-.panel-row {
+.board-layout {
   display: flex;
-  gap: 1.2rem;
+  gap: 1.5rem;
   justify-content: center;
+  align-items: flex-start;
   flex-wrap: wrap;
-  margin-top: 1.5rem;
+}
+
+.board-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.side-panel {
+  display: flex;
 }
 
 .skill-panel {

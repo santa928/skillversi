@@ -231,115 +231,119 @@ function App() {
         )}
       </div>
 
-      <div style={{
-        display: 'inline-grid',
-        gridTemplateColumns: 'repeat(8, 60px)',
-        gap: '3px',
-        background: '#008b8b',
-        padding: '3px',
-        borderRadius: '4px',
-        boxShadow: '0 0 15px #008b8b',
-        position: 'relative',
-        zIndex: 1
-      }}>
-        {board.map((row, ri) =>
-          row.map((cell, ci) => {
-            const canPlace = !gameOver && !cell && isValidMove(board, currentPlayer, ri, ci, flipProtection);
-            const indicatorColor = currentPlayer === 'black' ? 'rgba(0, 255, 255, 0.4)' : 'rgba(255, 0, 222, 0.4)';
-            const skillTile = skillTiles[`${ri},${ci}`];
-            const isBarrierCell = barrierActive && barrier?.cells[ri][ci];
-            const isTargetable = pendingSkill && SKILL_REQUIRES_TARGET[pendingSkill]
-              ? isValidSkillTarget(pendingSkill, ri, ci)
-              : false;
-            const isTargeted = pendingTarget && pendingTarget.row === ri && pendingTarget.col === ci;
-            const cursor = isTargetable || canPlace ? 'pointer' : 'default';
+      <div className="board-layout">
+        <div className="side-panel">
+          {renderHand('black')}
+        </div>
+        <div className="board-stack">
+          <div style={{
+            display: 'inline-grid',
+            gridTemplateColumns: 'repeat(8, 60px)',
+            gap: '3px',
+            background: '#008b8b',
+            padding: '3px',
+            borderRadius: '4px',
+            boxShadow: '0 0 15px #008b8b',
+            position: 'relative',
+            zIndex: 1
+          }}>
+            {board.map((row, ri) =>
+              row.map((cell, ci) => {
+                const canPlace = !gameOver && !cell && isValidMove(board, currentPlayer, ri, ci, flipProtection);
+                const indicatorColor = currentPlayer === 'black' ? 'rgba(0, 255, 255, 0.4)' : 'rgba(255, 0, 222, 0.4)';
+                const skillTile = skillTiles[`${ri},${ci}`];
+                const isBarrierCell = barrierActive && barrier?.cells[ri][ci];
+                const isTargetable = pendingSkill && SKILL_REQUIRES_TARGET[pendingSkill]
+                  ? isValidSkillTarget(pendingSkill, ri, ci)
+                  : false;
+                const isTargeted = pendingTarget && pendingTarget.row === ri && pendingTarget.col === ci;
+                const cursor = isTargetable || canPlace ? 'pointer' : 'default';
 
-            return (
-              <div
-                key={`${ri}-${ci}`}
-                className={`board-cell ${isBarrierCell ? 'barrier-cell' : ''} ${isTargetable ? 'targetable-cell' : ''} ${isTargeted ? 'target-cell' : ''}`}
-                onClick={() => handleCellClick(ri, ci)}
-                data-row={ri}
-                data-col={ci}
-                style={{
-                  width: '60px',
-                  height: '60px',
-                  background: canPlace ? '#252525' : '#1a1a1a',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor,
-                  transition: 'background 0.2s ease',
-                  position: 'relative'
-                }}
-              >
-                {!cell && skillTile && (
-                  <div className={`skill-tile skill-${skillTile}`}>
-                    <span className="skill-short">{SKILL_SHORT[skillTile]}</span>
-                  </div>
-                )}
-                {cell ? (
+                return (
                   <div
-                    className={`disc ${cell} ${shield[ri][ci] ? 'shielded' : ''}`}
+                    key={`${ri}-${ci}`}
+                    className={`board-cell ${isBarrierCell ? 'barrier-cell' : ''} ${isTargetable ? 'targetable-cell' : ''} ${isTargeted ? 'target-cell' : ''}`}
+                    onClick={() => handleCellClick(ri, ci)}
+                    data-row={ri}
+                    data-col={ci}
                     style={{
-                      width: '50px',
-                      height: '50px',
-                      borderRadius: '50%',
-                      background: cell === 'black' ? 'linear-gradient(135deg, #333 0%, #1a1a1a 100%)' : 'linear-gradient(135deg, #fff 0%, #ccc 100%)',
-                      border: cell === 'black' ? '2px solid #888' : '2px solid #fff',
-                      boxShadow: cell === 'black' ? '0 0 15px rgba(0, 255, 255, 0.6), inset 0 0 10px rgba(255,255,255,0.1)' : '0 0 15px rgba(255, 0, 222, 0.6), inset 0 0 5px rgba(0,0,0,0.2)',
-                      transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                      transform: 'scale(1)',
-                      animation: 'popIn 0.3s ease-out'
+                      width: '60px',
+                      height: '60px',
+                      background: canPlace ? '#252525' : '#1a1a1a',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor,
+                      transition: 'background 0.2s ease',
+                      position: 'relative'
                     }}
-                  />
-                ) : canPlace ? (
-                  <div style={{
-                    width: '20px',
-                    height: '20px',
-                    borderRadius: '50%',
-                    background: indicatorColor,
-                    boxShadow: `0 0 10px ${indicatorColor}`,
-                    animation: 'pulse 1.5s ease-in-out infinite'
-                  }} />
-                ) : null}
+                  >
+                    {!cell && skillTile && (
+                      <div className={`skill-tile skill-${skillTile}`}>
+                        <span className="skill-short">{SKILL_SHORT[skillTile]}</span>
+                      </div>
+                    )}
+                    {cell ? (
+                      <div
+                        className={`disc ${cell} ${shield[ri][ci] ? 'shielded' : ''}`}
+                        style={{
+                          width: '50px',
+                          height: '50px',
+                          borderRadius: '50%',
+                          background: cell === 'black' ? 'linear-gradient(135deg, #333 0%, #1a1a1a 100%)' : 'linear-gradient(135deg, #fff 0%, #ccc 100%)',
+                          border: cell === 'black' ? '2px solid #888' : '2px solid #fff',
+                          boxShadow: cell === 'black' ? '0 0 15px rgba(0, 255, 255, 0.6), inset 0 0 10px rgba(255,255,255,0.1)' : '0 0 15px rgba(255, 0, 222, 0.6), inset 0 0 5px rgba(0,0,0,0.2)',
+                          transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                          transform: 'scale(1)',
+                          animation: 'popIn 0.3s ease-out'
+                        }}
+                      />
+                    ) : canPlace ? (
+                      <div style={{
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '50%',
+                        background: indicatorColor,
+                        boxShadow: `0 0 10px ${indicatorColor}`,
+                        animation: 'pulse 1.5s ease-in-out infinite'
+                      }} />
+                    ) : null}
+                  </div>
+                );
+              })
+            )}
+          </div>
+          {pendingSkill && SKILL_REQUIRES_TARGET[pendingSkill] && (
+            <div className="skill-action-bar">
+              <div className="skill-hint">
+                対象を選択して確定してください
               </div>
-            );
-          })
-        )}
+              <div className="skill-actions">
+                <button
+                  className="skill-confirm"
+                  type="button"
+                  onClick={confirmSkill}
+                  disabled={!pendingTarget}
+                >
+                  確定
+                </button>
+                <button
+                  className="skill-cancel"
+                  type="button"
+                  onClick={cancelSkill}
+                >
+                  キャンセル
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="side-panel">
+          {renderHand('white')}
+        </div>
       </div>
 
       <VFXLayer lastMove={lastMove} />
-
-      {pendingSkill && SKILL_REQUIRES_TARGET[pendingSkill] && (
-        <div className="skill-action-bar">
-          <div className="skill-hint">
-            対象を選択して確定してください
-          </div>
-          <div className="skill-actions">
-            <button
-              className="skill-confirm"
-              type="button"
-              onClick={confirmSkill}
-              disabled={!pendingTarget}
-            >
-              確定
-            </button>
-            <button
-              className="skill-cancel"
-              type="button"
-              onClick={cancelSkill}
-            >
-              キャンセル
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="panel-row">
-        {renderHand('black')}
-        {renderHand('white')}
-      </div>
 
       <div className="log-panel">
         <div className="log-header">LOG</div>
