@@ -226,6 +226,28 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
+.app-title {
+  margin: 0 0 0.6rem;
+}
+
+.score-row {
+  align-items: center;
+}
+
+.score-label {
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+}
+
+.score-number {
+  line-height: 1;
+}
+
+.score-vs {
+  font-size: 0.9rem;
+  color: #888;
+}
+
 .board-cell.barrier-cell {
   box-shadow: inset 0 0 12px rgba(255, 107, 107, 0.55);
 }
@@ -501,11 +523,40 @@ body {
   .skill-panel {
     min-width: 160px;
   }
+
+  .app-title {
+    font-size: 2rem !important;
+  }
+
+  .score-row {
+    gap: 1rem !important;
+    margin-bottom: 0.6rem !important;
+  }
+
+  .score-card {
+    padding: 0.6rem 0.8rem !important;
+  }
+
+  .score-number {
+    font-size: 1.4rem !important;
+  }
+
+  .score-label {
+    font-size: 0.7rem;
+  }
+
+  .score-vs {
+    font-size: 0.75rem;
+  }
+
+  .status-line {
+    margin-bottom: 0.6rem;
+  }
 }
 
 @media (max-width: 480px) {
   :root {
-    --cell-size: 40px;
+    --cell-size: 36px;
     --cell-gap: 2px;
   }
 
@@ -515,6 +566,33 @@ body {
 
   .skill-panel {
     min-width: 140px;
+  }
+
+  .app-title {
+    font-size: 1.6rem !important;
+  }
+
+  .score-row {
+    gap: 0.6rem !important;
+  }
+
+  .score-card {
+    padding: 0.5rem 0.6rem !important;
+  }
+
+  .score-number {
+    font-size: 1.2rem !important;
+  }
+
+  .turn-indicator {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.6rem;
+  }
+
+  .info-button {
+    width: 30px;
+    height: 30px;
+    font-size: 0.85rem;
   }
 }
 

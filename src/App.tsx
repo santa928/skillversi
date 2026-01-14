@@ -198,7 +198,7 @@ function App() {
   };
 
   return (
-    <div style={{ color: 'white', padding: '20px', background: '#0f0f13', minHeight: '100vh', textAlign: 'center', position: 'relative' }}>
+    <div className="app-root" style={{ color: 'white', padding: '20px', background: '#0f0f13', minHeight: '100vh', textAlign: 'center', position: 'relative' }}>
       <button
         type="button"
         className="info-button"
@@ -207,17 +207,17 @@ function App() {
       >
         i
       </button>
-      <h1 style={{ textShadow: '0 0 10px #ff00de', fontSize: '2.5rem' }}>SkillVersi</h1>
+      <h1 className="app-title" style={{ textShadow: '0 0 10px #ff00de', fontSize: '2.5rem' }}>SkillVersi</h1>
 
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginBottom: '1rem' }}>
-        <div style={{ padding: '1rem', border: currentPlayer === 'black' ? '2px solid #00ffff' : '2px solid transparent', borderRadius: '8px' }}>
-          <div>BLACK</div>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{score.black}</div>
+      <div className="score-row" style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginBottom: '1rem' }}>
+        <div className="score-card" style={{ padding: '1rem', border: currentPlayer === 'black' ? '2px solid #00ffff' : '2px solid transparent', borderRadius: '8px' }}>
+          <div className="score-label">BLACK</div>
+          <div className="score-number" style={{ fontSize: '2rem', fontWeight: 'bold' }}>{score.black}</div>
         </div>
-        <div style={{ alignSelf: 'center' }}>VS</div>
-        <div style={{ padding: '1rem', border: currentPlayer === 'white' ? '2px solid #ff00de' : '2px solid transparent', borderRadius: '8px' }}>
-          <div>WHITE</div>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{score.white}</div>
+        <div className="score-vs" style={{ alignSelf: 'center' }}>VS</div>
+        <div className="score-card" style={{ padding: '1rem', border: currentPlayer === 'white' ? '2px solid #ff00de' : '2px solid transparent', borderRadius: '8px' }}>
+          <div className="score-label">WHITE</div>
+          <div className="score-number" style={{ fontSize: '2rem', fontWeight: 'bold' }}>{score.white}</div>
         </div>
       </div>
 
