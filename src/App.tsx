@@ -238,10 +238,10 @@ function App() {
         <div className="board-stack">
           <div style={{
             display: 'inline-grid',
-            gridTemplateColumns: 'repeat(8, 60px)',
-            gap: '3px',
+            gridTemplateColumns: 'repeat(8, var(--cell-size))',
+            gap: 'var(--cell-gap)',
             background: '#008b8b',
-            padding: '3px',
+            padding: 'var(--cell-gap)',
             borderRadius: '4px',
             boxShadow: '0 0 15px #008b8b',
             position: 'relative',
@@ -267,8 +267,8 @@ function App() {
                     data-row={ri}
                     data-col={ci}
                     style={{
-                      width: '60px',
-                      height: '60px',
+                      width: 'var(--cell-size)',
+                      height: 'var(--cell-size)',
                       background: canPlace ? '#252525' : '#1a1a1a',
                       display: 'flex',
                       alignItems: 'center',
@@ -287,8 +287,8 @@ function App() {
                       <div
                         className={`disc ${cell} ${shield[ri][ci] ? 'shielded' : ''}`}
                         style={{
-                          width: '50px',
-                          height: '50px',
+                          width: 'var(--disc-size)',
+                          height: 'var(--disc-size)',
                           borderRadius: '50%',
                           background: cell === 'black' ? 'linear-gradient(135deg, #333 0%, #1a1a1a 100%)' : 'linear-gradient(135deg, #fff 0%, #ccc 100%)',
                           border: cell === 'black' ? '2px solid #888' : '2px solid #fff',
@@ -300,8 +300,8 @@ function App() {
                       />
                     ) : canPlace ? (
                       <div style={{
-                        width: '20px',
-                        height: '20px',
+                        width: 'var(--indicator-size)',
+                        height: 'var(--indicator-size)',
                         borderRadius: '50%',
                         background: indicatorColor,
                         boxShadow: `0 0 10px ${indicatorColor}`,
