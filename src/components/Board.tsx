@@ -1,5 +1,5 @@
-import React from 'react';
-import { Board as BoardType, Player, isValidMove } from '../utils/gameLogic';
+import { isValidMove } from '../utils/gameLogic';
+import type { Board as BoardType, Player } from '../utils/gameLogic';
 import { Disc } from './Disc';
 import './Board.css';
 
@@ -10,7 +10,7 @@ interface BoardProps {
     gameOver: boolean;
 }
 
-export const Board: React.FC<BoardProps> = ({ board, currentPlayer, onMove, gameOver }) => {
+export const Board = ({ board, currentPlayer, onMove, gameOver }: BoardProps) => {
     return (
         <div className="board-wrapper">
             <div className="board">

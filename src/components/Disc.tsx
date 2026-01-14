@@ -1,12 +1,11 @@
-import React from 'react';
-import { Player } from '../utils/gameLogic';
+import type { Player } from '../utils/gameLogic';
 import './Disc.css';
 
 interface DiscProps {
     color: Player;
 }
 
-export const Disc: React.FC<DiscProps> = ({ color }) => {
+export const Disc = ({ color }: DiscProps) => {
     return (
         <div className="disc-container">
             <div className={`disc ${color}`}>
