@@ -232,7 +232,7 @@ function App() {
       </div>
 
       <div className="board-layout">
-        <div className="side-panel">
+        <div className="side-panel left-panel">
           {renderHand('black')}
         </div>
         <div className="board-stack">
@@ -338,7 +338,7 @@ function App() {
             </div>
           )}
         </div>
-        <div className="side-panel">
+        <div className="side-panel right-panel">
           {renderHand('white')}
         </div>
       </div>

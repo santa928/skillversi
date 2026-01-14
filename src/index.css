@@ -302,11 +302,12 @@ body {
 }
 
 .board-layout {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(220px, 260px) auto minmax(220px, 260px);
+  grid-template-areas: "left board right";
   gap: 1.5rem;
   justify-content: center;
-  align-items: flex-start;
-  flex-wrap: wrap;
+  align-items: start;
 }
 
 .board-stack {
@@ -314,10 +315,20 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 0.8rem;
+  grid-area: board;
 }
 
 .side-panel {
   display: flex;
+  justify-content: center;
+}
+
+.left-panel {
+  grid-area: left;
+}
+
+.right-panel {
+  grid-area: right;
 }
 
 .skill-panel {
@@ -464,8 +475,11 @@ body {
 
 @media (max-width: 900px) {
   .board-layout {
-    flex-direction: column;
-    align-items: center;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "left right"
+      "board board";
+    justify-items: center;
   }
 
   .side-panel {
@@ -483,6 +497,10 @@ body {
   #root {
     padding: 1.5rem;
   }
+
+  .skill-panel {
+    min-width: 160px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -493,6 +511,10 @@ body {
 
   #root {
     padding: 1rem;
+  }
+
+  .skill-panel {
+    min-width: 140px;
   }
 }
 
