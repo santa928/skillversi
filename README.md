@@ -1,10 +1,10 @@
-# Neon Othello
+# SkillVersi
 
-Neon Othelloは、ネオン風のビジュアルエフェクトを備えたオセロゲームのWebアプリケーションです。React + TypeScript + Viteで構築されており、Docker Composeを使用して簡単に起動できます。
+SkillVersiは、ネオン風のビジュアルエフェクトを備えたスキル付きオセロゲームのWebアプリケーションです。React + TypeScript + Viteで構築されており、Docker Composeを使用して簡単に起動できます。
 
 ## アプリケーション概要
 
-- **ゲーム名**: Neon Othello
+- **ゲーム名**: SkillVersi
 - **技術スタック**: React 19, TypeScript, Vite
 - **特徴**:
   - ネオン風のビジュアルエフェクト
