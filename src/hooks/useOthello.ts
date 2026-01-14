@@ -41,7 +41,16 @@ export interface GameState {
     doubleMoveRemaining: number;
 }
 
-const SKILL_TYPES: SkillType[] = ['convert', 'warp', 'double', 'shield', 'barrier', 'remove'];
+const SKILL_POOL: SkillType[] = [
+    'convert',
+    'convert',
+    'warp',
+    'double',
+    'shield',
+    'barrier',
+    'remove',
+    'remove'
+];
 const SKILL_NAMES: Record<SkillType, string> = {
     convert: '変色',
     warp: 'ワープ',
@@ -78,7 +87,7 @@ const createRandomSkillTiles = (): Record<string, SkillType> => {
     }
 
     const tiles: Record<string, SkillType> = {};
-    SKILL_TYPES.forEach((skill, index) => {
+    SKILL_POOL.forEach((skill, index) => {
         const pos = positions[index];
         tiles[posKey(pos.row, pos.col)] = skill;
     });
