@@ -1,0 +1,79 @@
+.board-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    background: radial-gradient(circle at center, #2a2a2e 0%, #000 100%);
+    border-radius: 20px;
+    box-shadow: 0 0 40px rgba(0, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.board {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    gap: 4px;
+    /* Grid lines */
+    background: #00ffff;
+    /* Neon grid lines color */
+    padding: 4px;
+    border-radius: 4px;
+    box-shadow: 0 0 20px #00ffff;
+    /* Glow for grid */
+    width: 600px;
+    height: 600px;
+}
+
+.cell {
+    background: #1a1a1a;
+    position: relative;
+    cursor: default;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.cell.valid-move {
+    cursor: pointer;
+    background: #252525;
+}
+
+.cell.valid-move:hover {
+    background: #333;
+}
+
+/* Valid move marker */
+.cell.valid-move::after {
+    content: '';
+    width: 20%;
+    height: 20%;
+    background: rgba(0, 255, 255, 0.3);
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 0.3;
+    }
+
+    50% {
+        transform: scale(1.5);
+        opacity: 0.6;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 0.3;
+    }
+}
+
+@media (max-width: 650px) {
+    .board {
+        width: 90vw;
+        height: 90vw;
+    }
+}
