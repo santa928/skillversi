@@ -32,6 +32,15 @@ const SKILL_REQUIRES_TARGET: Record<SkillType, boolean> = {
   remove: true
 };
 
+const SKILL_DESCRIPTIONS: Record<SkillType, string> = {
+  convert: '相手のコマ1つを自分色に変更（角は不可）',
+  warp: '空きマスに自分のコマを置く（通常反転なし）',
+  double: 'このターンに最大2回置ける（合法手がある場合のみ）',
+  shield: '自分のコマ1つをひっくり返し無効化（角は不可）',
+  barrier: '空きマス中心の周囲8マスが相手ターン中だけ反転無効',
+  remove: '盤面のコマ1つを取り除く（角は不可）'
+};
+
 function App() {
   const {
     board,
@@ -55,6 +64,7 @@ function App() {
 
   const [pendingSkill, setPendingSkill] = useState<SkillType | null>(null);
   const [pendingTarget, setPendingTarget] = useState<{ row: number; col: number } | null>(null);
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
 
   const barrierActive = Boolean(
     barrier && barrier.active && barrier.appliesTo === currentPlayer && barrier.expiresOnTurn === turnIndex
@@ -188,8 +198,16 @@ function App() {
   };
 
   return (
-    <div style={{ color: 'white', padding: '20px', background: '#0f0f13', minHeight: '100vh', textAlign: 'center' }}>
-      <h1 style={{ textShadow: '0 0 10px #ff00de', fontSize: '2.5rem' }}>Neon Othello</h1>
+    <div style={{ color: 'white', padding: '20px', background: '#0f0f13', minHeight: '100vh', textAlign: 'center', position: 'relative' }}>
+      <button
+        type="button"
+        className="info-button"
+        onClick={() => setIsInfoOpen(true)}
+        aria-label="スキル説明を開く"
+      >
+        i
+      </button>
+      <h1 style={{ textShadow: '0 0 10px #ff00de', fontSize: '2.5rem' }}>SkillVersi</h1>
 
       <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginBottom: '1rem' }}>
         <div style={{ padding: '1rem', border: currentPlayer === 'black' ? '2px solid #00ffff' : '2px solid transparent', borderRadius: '8px' }}>
@@ -335,6 +353,41 @@ function App() {
           )}
         </div>
       </div>
+
+      {isInfoOpen && (
+        <div className="info-modal-overlay" role="dialog" aria-modal="true">
+          <div className="info-modal">
+            <div className="info-modal-header">
+              <div className="info-title">スキル解説</div>
+              <button
+                type="button"
+                className="info-close"
+                onClick={() => setIsInfoOpen(false)}
+                aria-label="閉じる"
+              >
+                ×
+              </button>
+            </div>
+            <div className="info-body">
+              <div className="info-note">1ターンにつきスキル使用は1回まで。</div>
+              <div className="info-grid">
+                {Object.entries(SKILL_NAMES).map(([key, name]) => {
+                  const skill = key as SkillType;
+                  return (
+                    <div key={skill} className={`info-card skill-${skill}`}>
+                      <div className="info-skill-head">
+                        <span className="skill-short">{SKILL_SHORT[skill]}</span>
+                        <span className="info-skill-name">{name}</span>
+                      </div>
+                      <div className="info-skill-desc">{SKILL_DESCRIPTIONS[skill]}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {gameOver && (
         <div style={{
