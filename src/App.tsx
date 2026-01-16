@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOthello } from './hooks/useOthello';
 import { VFXLayer } from './components/VFXLayer';
-import { isValidMove, hasValidMoves, isCorner } from './utils/gameLogic';
-import type { SkillType } from './utils/gameLogic';
+import { BOARD_SIZE, getFlippableDiscs, hasValidMoves, isCorner, isValidMove } from './utils/gameLogic';
+import type { Player, SkillType } from './utils/gameLogic';
 import './index.css';
 
 const SKILL_NAMES: Record<SkillType, string> = {
@@ -50,6 +50,7 @@ function App() {
     winner,
     makeMove,
     applySkill,
+    passTurn,
     resetGame,
     lastMove,
     skillTiles,
@@ -65,17 +66,29 @@ function App() {
   const [pendingSkill, setPendingSkill] = useState<SkillType | null>(null);
   const [pendingTarget, setPendingTarget] = useState<{ row: number; col: number } | null>(null);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
+  const [mode, setMode] = useState<'pvp' | 'cpu'>('pvp');
+  const [cpuPlayer, setCpuPlayer] = useState<Player>('white');
+  const [cpuLevel, setCpuLevel] = useState<'easy' | 'normal'>('normal');
+  const cpuTimerRef = useRef<number | null>(null);
+  const cpuBusyRef = useRef(false);
 
   const barrierActive = Boolean(
     barrier && barrier.active && barrier.appliesTo === currentPlayer && barrier.expiresOnTurn === turnIndex
   );
 
-  const flipProtection = {
-    shield,
-    barrier: barrierActive && barrier
-      ? { active: true, appliesTo: currentPlayer, cells: barrier.cells }
-      : null
-  };
+  const getProtectionFor = useCallback((player: Player) => {
+    const active = Boolean(
+      barrier && barrier.active && barrier.appliesTo === player && barrier.expiresOnTurn === turnIndex
+    );
+    return {
+      shield,
+      barrier: active && barrier
+        ? { active: true, appliesTo: player, cells: barrier.cells }
+        : null
+    };
+  }, [barrier, shield, turnIndex]);
+
+  const flipProtection = getProtectionFor(currentPlayer);
 
   const isValidSkillTarget = (skill: SkillType, row: number, col: number) => {
     const cell = board[row][col];
@@ -87,7 +100,7 @@ function App() {
       case 'double':
         return false;
       case 'shield':
-        return cell === currentPlayer && !shield[row][col];
+        return cell === currentPlayer && !shield[row][col] && !isCorner(row, col);
       case 'barrier':
         return cell === null;
       case 'remove':
@@ -118,7 +131,10 @@ function App() {
     return hasTargetForSkill(skill);
   };
 
+  const isCpuTurn = mode === 'cpu' && currentPlayer === cpuPlayer;
+
   const handleSkillClick = (skill: SkillType) => {
+    if (isCpuTurn) return;
     if (!canUseSkill(skill)) return;
     if (skill === 'double') {
       applySkill(skill);
@@ -134,6 +150,7 @@ function App() {
   };
 
   const handleCellClick = (row: number, col: number) => {
+    if (isCpuTurn) return;
     if (pendingSkill && SKILL_REQUIRES_TARGET[pendingSkill]) {
       if (isValidSkillTarget(pendingSkill, row, col)) {
         if (pendingTarget && pendingTarget.row === row && pendingTarget.col === col) {
@@ -150,6 +167,7 @@ function App() {
   };
 
   const confirmSkill = () => {
+    if (isCpuTurn) return;
     if (!pendingSkill || !pendingTarget) return;
     applySkill(pendingSkill, pendingTarget);
     setPendingSkill(null);
@@ -157,6 +175,7 @@ function App() {
   };
 
   const cancelSkill = () => {
+    if (isCpuTurn) return;
     setPendingSkill(null);
     setPendingTarget(null);
   };
@@ -164,11 +183,15 @@ function App() {
   const renderHand = (player: 'black' | 'white') => {
     const isActive = player === currentPlayer;
     const hand = hands[player];
+    const isCpuHand = mode === 'cpu' && player === cpuPlayer;
 
     return (
-      <div className={`skill-panel ${isActive ? 'active' : ''}`}>
+      <div className={`skill-panel ${isActive ? 'active' : ''} ${isCpuHand ? 'cpu-hand' : ''}`}>
         <div className="skill-panel-header">
-          <span>{player === 'black' ? 'BLACK' : 'WHITE'}</span>
+          <span>
+            {player === 'black' ? 'BLACK' : 'WHITE'}
+            {isCpuHand && <span className="cpu-badge">CPU</span>}
+          </span>
           <span className="skill-panel-count">手札 {hand.length}/2</span>
         </div>
         <div className="skill-panel-body">
@@ -176,14 +199,14 @@ function App() {
             <div className="skill-empty">EMPTY</div>
           ) : (
             hand.map((skill, index) => {
-              const disabled = !isActive || !canUseSkill(skill);
-              const selected = isActive && pendingSkill === skill;
+              const disabled = !isActive || !canUseSkill(skill) || isCpuHand;
+              const selected = isActive && pendingSkill === skill && !isCpuHand;
 
               return (
                 <button
                   key={`${skill}-${index}`}
                   className={`skill-button skill-${skill} ${disabled ? 'disabled' : ''} ${selected ? 'selected' : ''}`}
-                  onClick={() => isActive && handleSkillClick(skill)}
+                  onClick={() => isActive && !isCpuHand && handleSkillClick(skill)}
                   type="button"
                 >
                   <span className="skill-short">{SKILL_SHORT[skill]}</span>
@@ -197,6 +220,240 @@ function App() {
     );
   };
 
+  const handleModeChange = (next: 'pvp' | 'cpu') => {
+    setMode(next);
+    setPendingSkill(null);
+    setPendingTarget(null);
+    resetGame();
+  };
+
+  const handleCpuPlayerChange = (next: Player) => {
+    setCpuPlayer(next);
+    setPendingSkill(null);
+    setPendingTarget(null);
+    resetGame();
+  };
+
+  const handleCpuLevelChange = (next: 'easy' | 'normal') => {
+    setCpuLevel(next);
+  };
+
+  const getValidMovesFor = useCallback((player: Player) => {
+    const moves: { row: number; col: number }[] = [];
+    const protection = getProtectionFor(player);
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      for (let c = 0; c < BOARD_SIZE; c++) {
+        if (isValidMove(board, player, r, c, protection)) {
+          moves.push({ row: r, col: c });
+        }
+      }
+    }
+    return moves;
+  }, [board, getProtectionFor]);
+
+  const scoreMove = useCallback((player: Player, row: number, col: number) => {
+    const protection = getProtectionFor(player);
+    const flips = getFlippableDiscs(board, player, row, col, protection).length;
+    let score = flips * 10;
+    if (isCorner(row, col)) score += 80;
+    else if (row === 0 || row === BOARD_SIZE - 1 || col === 0 || col === BOARD_SIZE - 1) score += 20;
+    return score;
+  }, [board, getProtectionFor]);
+
+  const chooseMove = useCallback((player: Player) => {
+    const moves = getValidMovesFor(player);
+    if (moves.length === 0) return null;
+    if (cpuLevel === 'easy') {
+      return moves[Math.floor(Math.random() * moves.length)];
+    }
+    let best = moves[0];
+    let bestScore = scoreMove(player, best.row, best.col);
+    for (const move of moves.slice(1)) {
+      const score = scoreMove(player, move.row, move.col);
+      if (score > bestScore) {
+        bestScore = score;
+        best = move;
+      }
+    }
+    return best;
+  }, [cpuLevel, getValidMovesFor, scoreMove]);
+
+  const evaluateSkillTargets = useCallback((player: Player, skill: SkillType) => {
+    let bestTarget: { row: number; col: number } | null = null;
+    let bestScore = -Infinity;
+    const opponent: Player = player === 'black' ? 'white' : 'black';
+
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      for (let c = 0; c < BOARD_SIZE; c++) {
+        const cell = board[r][c];
+        let score = -Infinity;
+        switch (skill) {
+          case 'convert':
+            if (cell !== opponent || isCorner(r, c)) continue;
+            score = 25;
+            if (r === 0 || r === BOARD_SIZE - 1 || c === 0 || c === BOARD_SIZE - 1) score += 20;
+            break;
+          case 'remove':
+            if (cell !== opponent || isCorner(r, c)) continue;
+            score = 20;
+            if (r === 0 || r === BOARD_SIZE - 1 || c === 0 || c === BOARD_SIZE - 1) score += 15;
+            break;
+          case 'shield':
+            if (cell !== player || isCorner(r, c) || shield[r][c]) continue;
+            score = 0;
+            for (let dr = -1; dr <= 1; dr++) {
+              for (let dc = -1; dc <= 1; dc++) {
+                if (dr === 0 && dc === 0) continue;
+                const nr = r + dr;
+                const nc = c + dc;
+                if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) continue;
+                if (board[nr][nc] === opponent) score += 2;
+              }
+            }
+            break;
+          case 'barrier':
+            if (cell !== null) continue;
+            score = 0;
+            for (let dr = -1; dr <= 1; dr++) {
+              for (let dc = -1; dc <= 1; dc++) {
+                if (dr === 0 && dc === 0) continue;
+                const nr = r + dr;
+                const nc = c + dc;
+                if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) continue;
+                if (board[nr][nc] === player) score += 2;
+              }
+            }
+            break;
+          case 'warp':
+            if (cell !== null) continue;
+            score = 8;
+            if (isCorner(r, c)) score += 80;
+            else if (r === 0 || r === BOARD_SIZE - 1 || c === 0 || c === BOARD_SIZE - 1) score += 20;
+            if (skillTiles[`${r},${c}`] && hands[player].length < 2) score += 10;
+            break;
+          default:
+            continue;
+        }
+        if (score > bestScore) {
+          bestScore = score;
+          bestTarget = { row: r, col: c };
+        }
+      }
+    }
+
+    if (!bestTarget || bestScore <= 0) return null;
+    return { target: bestTarget, score: bestScore };
+  }, [board, hands, shield, skillTiles]);
+
+  const chooseSkillAction = useCallback((player: Player) => {
+    if (turnSkillUsed || doubleMoveRemaining > 0) return null;
+    const hand = hands[player];
+    if (hand.length === 0) return null;
+
+    const validMoves = getValidMovesFor(player);
+    const moveScores = validMoves.map(move => scoreMove(player, move.row, move.col));
+    const bestMoveScore = moveScores.length > 0 ? Math.max(...moveScores) : -Infinity;
+
+    let bestSkill: SkillType | null = null;
+    let bestTarget: { row: number; col: number } | undefined;
+    let bestScore = -Infinity;
+
+    const uniqueSkills = Array.from(new Set(hand));
+    for (const skill of uniqueSkills) {
+      if (skill === 'double') {
+        if (validMoves.length < 2) continue;
+        const sorted = [...moveScores].sort((a, b) => b - a);
+        const score = (sorted[0] ?? 0) + (sorted[1] ?? 0) + 15;
+        if (score > bestScore) {
+          bestScore = score;
+          bestSkill = skill;
+          bestTarget = undefined;
+        }
+        continue;
+      }
+      const evaluated = evaluateSkillTargets(player, skill);
+      if (!evaluated) continue;
+      if (evaluated.score > bestScore) {
+        bestScore = evaluated.score;
+        bestSkill = skill;
+        bestTarget = evaluated.target;
+      }
+    }
+
+    if (!bestSkill) return null;
+
+    if (cpuLevel === 'easy') {
+      const chance = bestSkill === 'double' ? 0.4 : 0.3;
+      if (Math.random() > chance && bestMoveScore > 0) return null;
+    } else {
+      if (bestScore < bestMoveScore + 5 && bestMoveScore > 0) return null;
+    }
+
+    return { skill: bestSkill, target: bestTarget };
+  }, [
+    cpuLevel,
+    doubleMoveRemaining,
+    evaluateSkillTargets,
+    getValidMovesFor,
+    hands,
+    scoreMove,
+    turnSkillUsed
+  ]);
+
+  useEffect(() => {
+    if (mode !== 'cpu') return;
+    if (gameOver) return;
+    if (currentPlayer !== cpuPlayer) return;
+    if (cpuBusyRef.current) return;
+
+    cpuBusyRef.current = true;
+    const delay = 500;
+    cpuTimerRef.current = window.setTimeout(() => {
+      cpuTimerRef.current = null;
+      cpuBusyRef.current = false;
+
+      const action = chooseSkillAction(cpuPlayer);
+      if (action) {
+        applySkill(action.skill, action.target);
+        return;
+      }
+
+      const move = chooseMove(cpuPlayer);
+      if (move) {
+        makeMove(move.row, move.col);
+        return;
+      }
+
+      passTurn();
+    }, delay);
+
+    return () => {
+      if (cpuTimerRef.current) {
+        window.clearTimeout(cpuTimerRef.current);
+        cpuTimerRef.current = null;
+      }
+      cpuBusyRef.current = false;
+    };
+  }, [
+    mode,
+    cpuPlayer,
+    cpuLevel,
+    board,
+    hands,
+    shield,
+    barrier,
+    currentPlayer,
+    turnIndex,
+    gameOver,
+    turnSkillUsed,
+    doubleMoveRemaining,
+    chooseMove,
+    chooseSkillAction,
+    applySkill,
+    makeMove,
+    passTurn
+  ]);
+
   return (
     <div className="app-root" style={{ color: 'white', padding: '20px', background: '#0f0f13', minHeight: '100vh', textAlign: 'center', position: 'relative' }}>
       <button
@@ -207,6 +464,33 @@ function App() {
       >
         i
       </button>
+      <div className="mode-panel">
+        <label>
+          <span>MODE</span>
+          <select value={mode} onChange={(e) => handleModeChange(e.target.value as 'pvp' | 'cpu')}>
+            <option value="pvp">PVP</option>
+            <option value="cpu">CPU</option>
+          </select>
+        </label>
+        {mode === 'cpu' && (
+          <>
+            <label>
+              <span>CPU</span>
+              <select value={cpuPlayer} onChange={(e) => handleCpuPlayerChange(e.target.value as Player)}>
+                <option value="black">BLACK</option>
+                <option value="white">WHITE</option>
+              </select>
+            </label>
+            <label>
+              <span>LEVEL</span>
+              <select value={cpuLevel} onChange={(e) => handleCpuLevelChange(e.target.value as 'easy' | 'normal')}>
+                <option value="easy">Easy</option>
+                <option value="normal">Normal</option>
+              </select>
+            </label>
+          </>
+        )}
+      </div>
       <h1 className="app-title" style={{ textShadow: '0 0 10px #ff00de', fontSize: '2.5rem' }}>SkillVersi</h1>
 
       <div className="score-row" style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginBottom: '1rem' }}>

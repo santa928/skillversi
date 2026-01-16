@@ -153,7 +153,7 @@ const isValidSkillTarget = (
         case 'double':
             return false;
         case 'shield':
-            return cell === state.currentPlayer && !state.shield[row][col];
+            return cell === state.currentPlayer && !state.shield[row][col] && !isCorner(row, col);
         case 'barrier':
             return cell === null;
         case 'remove':
@@ -428,6 +428,15 @@ export function useOthello() {
         });
     }, []);
 
+    const passTurn = useCallback(() => {
+        setGameState((prev) => {
+            if (prev.gameOver) return prev;
+            const protection = getFlipProtection(prev, prev.currentPlayer, prev.turnIndex);
+            if (hasValidMoves(prev.board, prev.currentPlayer, protection)) return prev;
+            return advanceTurn({ ...prev, lastMove: null });
+        });
+    }, []);
+
     const resetGame = useCallback(() => {
         setGameState({
             board: createInitialBoard(),
@@ -451,6 +460,7 @@ export function useOthello() {
         ...gameState,
         makeMove,
         applySkill,
+        passTurn,
         resetGame
     };
 }
