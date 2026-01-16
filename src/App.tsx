@@ -678,25 +678,24 @@ function App() {
       )}
 
       {gameOver && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'rgba(0,0,0,0.85)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10000
-        }}>
-          <div style={{ background: '#111', padding: '2rem', borderRadius: '20px', border: '2px solid white', boxShadow: '0 0 30px rgba(255,255,255,0.2)' }}>
-            <h2 style={{ fontSize: '3rem', margin: 0 }}>GAME OVER</h2>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', background: 'linear-gradient(45deg, #00ffff, #ff00de)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              {winner === 'draw' ? 'DRAW' : `${winner?.toUpperCase()} WINS!`}
-            </p>
-            <button onClick={resetGame} style={{ padding: '1rem 3rem', fontSize: '1.2rem', fontWeight: 'bold', cursor: 'pointer', borderRadius: '50px', border: 'none' }}>PLAY AGAIN</button>
+        <div className="result-panel">
+          <div className="result-title">RESULT</div>
+          <div className="result-winner">
+            {winner === 'draw' ? 'DRAW' : `${winner?.toUpperCase()} WINS!`}
           </div>
+          <div className="result-score">
+            <div>
+              <span className="result-label">BLACK</span>
+              <span className="result-value">{score.black}</span>
+            </div>
+            <div>
+              <span className="result-label">WHITE</span>
+              <span className="result-value">{score.white}</span>
+            </div>
+          </div>
+          <button className="restart-btn" onClick={resetGame} type="button">
+            PLAY AGAIN
+          </button>
         </div>
       )}
 

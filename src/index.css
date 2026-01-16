@@ -540,6 +540,55 @@ body {
   color: #666;
 }
 
+.result-panel {
+  margin: 0.8rem auto 1.2rem;
+  max-width: 520px;
+  background: rgba(15, 15, 19, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 16px;
+  padding: 1.2rem 1.4rem;
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.4);
+  display: grid;
+  gap: 0.6rem;
+}
+
+.result-title {
+  font-size: 0.85rem;
+  letter-spacing: 3px;
+  color: #aaa;
+}
+
+.result-winner {
+  font-size: 1.8rem;
+  font-weight: 800;
+  background: linear-gradient(45deg, #00ffff, #ff00de);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.result-score {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  font-weight: 700;
+}
+
+.result-score > div {
+  display: grid;
+  gap: 0.2rem;
+  justify-items: center;
+}
+
+.result-label {
+  font-size: 0.7rem;
+  color: #aaa;
+  letter-spacing: 1px;
+}
+
+.result-value {
+  font-size: 1.4rem;
+}
+
 @media (max-width: 900px) {
   .board-layout {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -646,6 +695,23 @@ body {
   .log-panel {
     display: none;
   }
+
+  .result-panel {
+    padding: 0.8rem 1rem;
+    margin: 0.6rem auto 0.8rem;
+  }
+
+  .result-winner {
+    font-size: 1.4rem;
+  }
+
+  .result-score {
+    gap: 1.2rem;
+  }
+
+  .result-value {
+    font-size: 1.1rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -705,6 +771,10 @@ body {
 
   .skill-name {
     font-size: 0.7rem;
+  }
+
+  .result-panel {
+    padding: 0.7rem 0.9rem;
   }
 }
 
