@@ -1,7 +1,7 @@
 export type Player = 'black' | 'white';
 export type CellState = Player | null;
 export type Board = CellState[][];
-export type SkillType = 'convert' | 'warp' | 'double' | 'shield' | 'barrier' | 'remove';
+export type SkillType = 'convert' | 'warp' | 'double' | 'shield' | 'block' | 'remove';
 
 export const BOARD_SIZE = 8;
 
@@ -12,11 +12,7 @@ export interface Move {
 
 export interface FlipProtection {
     shield?: boolean[][];
-    barrier?: {
-        active: boolean;
-        appliesTo: Player;
-        cells: boolean[][];
-    } | null;
+    block?: boolean[][];
 }
 
 export function createInitialBoard(): Board {
@@ -51,15 +47,13 @@ export function getFlippableDiscs(
     protection?: FlipProtection
 ): Move[] {
     if (board[row][col] !== null) return [];
+    if (protection?.block && protection.block[row] && protection.block[row][col]) return [];
 
     const flippable: Move[] = [];
     const opponent: Player = player === 'black' ? 'white' : 'black';
     const shield = protection?.shield;
-    const barrier = protection?.barrier;
-    const barrierApplies = Boolean(barrier && barrier.active && barrier.appliesTo === player);
     const isProtected = (r: number, c: number) => {
         if (shield && shield[r] && shield[r][c]) return true;
-        if (barrierApplies && barrier?.cells && barrier.cells[r] && barrier.cells[r][c]) return true;
         return false;
     };
 

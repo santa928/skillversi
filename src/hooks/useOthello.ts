@@ -11,12 +11,9 @@ import {
     isCorner
 } from '../utils/gameLogic';
 
-export interface BarrierState {
-    active: boolean;
-    owner: Player;
-    appliesTo: Player;
-    expiresOnTurn: number;
-    cells: boolean[][];
+export interface BlockState {
+    black: boolean[][];
+    white: boolean[][];
 }
 
 export interface GameState {
@@ -34,7 +31,7 @@ export interface GameState {
     skillTiles: Record<string, SkillType>;
     hands: Record<Player, SkillType[]>;
     shield: boolean[][];
-    barrier: BarrierState | null;
+    block: BlockState;
     logs: string[];
     turnIndex: number;
     turnSkillUsed: boolean;
@@ -47,7 +44,7 @@ const SKILL_POOL: SkillType[] = [
     'warp',
     'double',
     'shield',
-    'barrier',
+    'block',
     'remove',
     'remove'
 ];
@@ -56,12 +53,13 @@ const SKILL_NAMES: Record<SkillType, string> = {
     warp: 'ワープ',
     double: '2回置き',
     shield: 'シールド',
-    barrier: 'バリア',
+    block: 'ブロック',
     remove: '除去'
 };
 
 const createEmptyBoolGrid = () =>
     Array.from({ length: BOARD_SIZE }, () => Array.from({ length: BOARD_SIZE }, () => false));
+const cloneBoolGrid = (grid: boolean[][]) => grid.map(row => [...row]);
 
 const posKey = (row: number, col: number) => `${row},${col}`;
 
@@ -95,41 +93,10 @@ const createRandomSkillTiles = (): Record<string, SkillType> => {
     return tiles;
 };
 
-const buildBarrierCells = (row: number, col: number): boolean[][] => {
-    const cells = createEmptyBoolGrid();
-    for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-            if (dr === 0 && dc === 0) continue;
-            const r = row + dr;
-            const c = col + dc;
-            if (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE) {
-                cells[r][c] = true;
-            }
-        }
-    }
-    return cells;
-};
-
-const getFlipProtection = (state: GameState, player: Player, turnIndexOverride?: number): FlipProtection => {
-    const turnIndex = turnIndexOverride ?? state.turnIndex;
-    const barrierActive = Boolean(
-        state.barrier &&
-        state.barrier.active &&
-        state.barrier.appliesTo === player &&
-        state.barrier.expiresOnTurn === turnIndex
-    );
-
-    return {
-        shield: state.shield,
-        barrier: barrierActive
-            ? {
-                active: true,
-                appliesTo: player,
-                cells: state.barrier ? state.barrier.cells : createEmptyBoolGrid()
-            }
-            : null
-    };
-};
+const getFlipProtection = (state: GameState, player: Player): FlipProtection => ({
+    shield: state.shield,
+    block: state.block[player]
+});
 
 const removeSkillOnce = (hand: SkillType[], skill: SkillType): SkillType[] => {
     const index = hand.indexOf(skill);
@@ -145,6 +112,7 @@ const isValidSkillTarget = (
 ): boolean => {
     if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) return false;
     const cell = state.board[row][col];
+    const isBlocked = state.block.black[row][col] || state.block.white[row][col];
     switch (skill) {
         case 'convert':
             return cell !== null && cell !== state.currentPlayer && !isCorner(row, col);
@@ -154,8 +122,8 @@ const isValidSkillTarget = (
             return false;
         case 'shield':
             return cell === state.currentPlayer && !state.shield[row][col] && !isCorner(row, col);
-        case 'barrier':
-            return cell === null;
+        case 'block':
+            return cell === null && !isCorner(row, col) && !isBlocked;
         case 'remove':
             return cell !== null && !isCorner(row, col);
         default:
@@ -201,14 +169,14 @@ const advanceTurn = (state: GameState): GameState => {
     const opponentHasMoves = hasValidMoves(
         state.board,
         opponent,
-        getFlipProtection(state, opponent, nextTurnIndex)
+        getFlipProtection(state, opponent)
     );
 
     if (!opponentHasMoves) {
         const currentHasMoves = hasValidMoves(
             state.board,
             state.currentPlayer,
-            getFlipProtection(state, state.currentPlayer, nextTurnIndex)
+            getFlipProtection(state, state.currentPlayer)
         );
         if (currentHasMoves) {
             nextPlayer = state.currentPlayer;
@@ -219,18 +187,12 @@ const advanceTurn = (state: GameState): GameState => {
         }
     }
 
-    let barrier = state.barrier;
-    if (barrier && barrier.active && nextTurnIndex > barrier.expiresOnTurn) {
-        barrier = { ...barrier, active: false };
-    }
-
     return {
         ...state,
         currentPlayer: nextPlayer,
         turnIndex: nextTurnIndex,
         gameOver,
         winner,
-        barrier,
         turnSkillUsed: false,
         doubleMoveRemaining: 0
     };
@@ -247,7 +209,7 @@ export function useOthello() {
         skillTiles: createRandomSkillTiles(),
         hands: { black: [], white: [] },
         shield: createEmptyBoolGrid(),
-        barrier: null,
+        block: { black: createEmptyBoolGrid(), white: createEmptyBoolGrid() },
         logs: [],
         turnIndex: 0,
         turnSkillUsed: false,
@@ -258,7 +220,7 @@ export function useOthello() {
         setGameState((prev) => {
             if (prev.gameOver) return prev;
 
-            const protection = getFlipProtection(prev, prev.currentPlayer, prev.turnIndex);
+            const protection = getFlipProtection(prev, prev.currentPlayer);
             if (!isValidMove(prev.board, prev.currentPlayer, row, col, protection)) return prev;
 
             const flippable = getFlippableDiscs(prev.board, prev.currentPlayer, row, col, protection);
@@ -287,7 +249,7 @@ export function useOthello() {
                 const stillHasMoves = remaining > 0 && hasValidMoves(
                     newBoard,
                     prev.currentPlayer,
-                    getFlipProtection(updatedState, prev.currentPlayer, prev.turnIndex)
+                    getFlipProtection(updatedState, prev.currentPlayer)
                 );
 
                 if (remaining > 0 && stillHasMoves) {
@@ -317,7 +279,7 @@ export function useOthello() {
             if (!prev.hands[prev.currentPlayer].includes(skill)) return prev;
 
             if (skill === 'double') {
-                const protection = getFlipProtection(prev, prev.currentPlayer, prev.turnIndex);
+                const protection = getFlipProtection(prev, prev.currentPlayer);
                 if (!hasValidMoves(prev.board, prev.currentPlayer, protection)) return prev;
                 const nextHands = {
                     ...prev.hands,
@@ -343,7 +305,7 @@ export function useOthello() {
             };
             let nextBoard = prev.board;
             let nextShield = prev.shield;
-            let nextBarrier = prev.barrier;
+            let nextBlock = prev.block;
             let nextLogs = [...prev.logs, `${playerLabel(prev.currentPlayer)} が ${SKILL_NAMES[skill]} を使用 ${formatPos(target.row, target.col)}`];
             let lastMove: GameState['lastMove'] = null;
 
@@ -393,7 +355,7 @@ export function useOthello() {
                     skillTiles: newSkillTiles,
                     logs: nextLogs,
                     shield: nextShield,
-                    barrier: nextBarrier,
+                    block: nextBlock,
                     turnSkillUsed: true
                 });
             }
@@ -404,14 +366,14 @@ export function useOthello() {
                 nextShield = shieldCopy;
             }
 
-            if (skill === 'barrier') {
-                nextBarrier = {
-                    active: true,
-                    owner: prev.currentPlayer,
-                    appliesTo: prev.currentPlayer === 'black' ? 'white' : 'black',
-                    expiresOnTurn: prev.turnIndex + 1,
-                    cells: buildBarrierCells(target.row, target.col)
+            if (skill === 'block') {
+                const opponent: Player = prev.currentPlayer === 'black' ? 'white' : 'black';
+                const blockCopy = {
+                    black: cloneBoolGrid(prev.block.black),
+                    white: cloneBoolGrid(prev.block.white)
                 };
+                blockCopy[opponent][target.row][target.col] = true;
+                nextBlock = blockCopy;
             }
 
             return advanceTurn({
@@ -422,7 +384,7 @@ export function useOthello() {
                 hands: nextHands,
                 logs: nextLogs,
                 shield: nextShield,
-                barrier: nextBarrier,
+                block: nextBlock,
                 turnSkillUsed: true
             });
         });
@@ -431,7 +393,7 @@ export function useOthello() {
     const passTurn = useCallback(() => {
         setGameState((prev) => {
             if (prev.gameOver) return prev;
-            const protection = getFlipProtection(prev, prev.currentPlayer, prev.turnIndex);
+            const protection = getFlipProtection(prev, prev.currentPlayer);
             if (hasValidMoves(prev.board, prev.currentPlayer, protection)) return prev;
             return advanceTurn({ ...prev, lastMove: null });
         });
@@ -448,7 +410,7 @@ export function useOthello() {
             skillTiles: createRandomSkillTiles(),
             hands: { black: [], white: [] },
             shield: createEmptyBoolGrid(),
-            barrier: null,
+            block: { black: createEmptyBoolGrid(), white: createEmptyBoolGrid() },
             logs: [],
             turnIndex: 0,
             turnSkillUsed: false,

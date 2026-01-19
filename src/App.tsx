@@ -10,7 +10,7 @@ const SKILL_NAMES: Record<SkillType, string> = {
   warp: 'ワープ',
   double: '2回置き',
   shield: 'シールド',
-  barrier: 'バリア',
+  block: 'ブロック',
   remove: '除去'
 };
 
@@ -19,7 +19,7 @@ const SKILL_SHORT: Record<SkillType, string> = {
   warp: 'WP',
   double: '2X',
   shield: 'SH',
-  barrier: 'BR',
+  block: 'BL',
   remove: 'RM'
 };
 
@@ -28,7 +28,7 @@ const SKILL_REQUIRES_TARGET: Record<SkillType, boolean> = {
   warp: true,
   double: false,
   shield: true,
-  barrier: true,
+  block: true,
   remove: true
 };
 
@@ -37,7 +37,7 @@ const SKILL_DESCRIPTIONS: Record<SkillType, string> = {
   warp: '空きマスに自分のコマを置く（通常反転なし）',
   double: 'このターンに最大2回置ける（合法手がある場合のみ）',
   shield: '自分のコマ1つをひっくり返し無効化（角は不可）',
-  barrier: '空きマス中心の周囲8マスが相手ターン中だけ反転無効',
+  block: '空きマスを指定し、そのマスに相手は通常手で置けなくなる（角は不可）',
   remove: '盤面のコマ1つを取り除く（角は不可）'
 };
 
@@ -56,9 +56,8 @@ function App() {
     skillTiles,
     hands,
     shield,
-    barrier,
+    block,
     logs,
-    turnIndex,
     turnSkillUsed,
     doubleMoveRemaining
   } = useOthello();
@@ -72,26 +71,18 @@ function App() {
   const cpuTimerRef = useRef<number | null>(null);
   const cpuBusyRef = useRef(false);
 
-  const barrierActive = Boolean(
-    barrier && barrier.active && barrier.appliesTo === currentPlayer && barrier.expiresOnTurn === turnIndex
-  );
-
   const getProtectionFor = useCallback((player: Player) => {
-    const active = Boolean(
-      barrier && barrier.active && barrier.appliesTo === player && barrier.expiresOnTurn === turnIndex
-    );
     return {
       shield,
-      barrier: active && barrier
-        ? { active: true, appliesTo: player, cells: barrier.cells }
-        : null
+      block: block[player]
     };
-  }, [barrier, shield, turnIndex]);
+  }, [block, shield]);
 
   const flipProtection = getProtectionFor(currentPlayer);
 
   const isValidSkillTarget = (skill: SkillType, row: number, col: number) => {
     const cell = board[row][col];
+    const isBlocked = block.black[row][col] || block.white[row][col];
     switch (skill) {
       case 'convert':
         return cell !== null && cell !== currentPlayer && !isCorner(row, col);
@@ -101,8 +92,8 @@ function App() {
         return false;
       case 'shield':
         return cell === currentPlayer && !shield[row][col] && !isCorner(row, col);
-      case 'barrier':
-        return cell === null;
+      case 'block':
+        return cell === null && !isCorner(row, col) && !isBlocked;
       case 'remove':
         return cell !== null && !isCorner(row, col);
       default:
@@ -282,10 +273,12 @@ function App() {
     let bestTarget: { row: number; col: number } | null = null;
     let bestScore = -Infinity;
     const opponent: Player = player === 'black' ? 'white' : 'black';
+    const opponentProtection = getProtectionFor(opponent);
 
     for (let r = 0; r < BOARD_SIZE; r++) {
       for (let c = 0; c < BOARD_SIZE; c++) {
         const cell = board[r][c];
+        const isBlocked = block.black[r][c] || block.white[r][c];
         let score = -Infinity;
         switch (skill) {
           case 'convert':
@@ -311,18 +304,11 @@ function App() {
               }
             }
             break;
-          case 'barrier':
-            if (cell !== null) continue;
-            score = 0;
-            for (let dr = -1; dr <= 1; dr++) {
-              for (let dc = -1; dc <= 1; dc++) {
-                if (dr === 0 && dc === 0) continue;
-                const nr = r + dr;
-                const nc = c + dc;
-                if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) continue;
-                if (board[nr][nc] === player) score += 2;
-              }
-            }
+          case 'block':
+            if (cell !== null || isCorner(r, c) || isBlocked) continue;
+            if (!isValidMove(board, opponent, r, c, opponentProtection)) continue;
+            score = 25;
+            if (r === 0 || r === BOARD_SIZE - 1 || c === 0 || c === BOARD_SIZE - 1) score += 10;
             break;
           case 'warp':
             if (cell !== null) continue;
@@ -343,7 +329,7 @@ function App() {
 
     if (!bestTarget || bestScore <= 0) return null;
     return { target: bestTarget, score: bestScore };
-  }, [board, hands, shield, skillTiles]);
+  }, [board, block, getProtectionFor, hands, shield, skillTiles]);
 
   const chooseSkillAction = useCallback((player: Player) => {
     if (turnSkillUsed || doubleMoveRemaining > 0) return null;
@@ -441,9 +427,8 @@ function App() {
     board,
     hands,
     shield,
-    barrier,
+    block,
     currentPlayer,
-    turnIndex,
     gameOver,
     turnSkillUsed,
     doubleMoveRemaining,
@@ -536,7 +521,7 @@ function App() {
                 const canPlace = !gameOver && !cell && isValidMove(board, currentPlayer, ri, ci, flipProtection);
                 const indicatorColor = currentPlayer === 'black' ? 'rgba(0, 255, 255, 0.4)' : 'rgba(255, 0, 222, 0.4)';
                 const skillTile = skillTiles[`${ri},${ci}`];
-                const isBarrierCell = barrierActive && barrier?.cells[ri][ci];
+                const isBlockedCell = !cell && block[currentPlayer][ri][ci];
                 const isTargetable = pendingSkill && SKILL_REQUIRES_TARGET[pendingSkill]
                   ? isValidSkillTarget(pendingSkill, ri, ci)
                   : false;
@@ -546,7 +531,7 @@ function App() {
                 return (
                   <div
                     key={`${ri}-${ci}`}
-                    className={`board-cell ${isBarrierCell ? 'barrier-cell' : ''} ${isTargetable ? 'targetable-cell' : ''} ${isTargeted ? 'target-cell' : ''}`}
+                    className={`board-cell ${isBlockedCell ? 'blocked-cell' : ''} ${isTargetable ? 'targetable-cell' : ''} ${isTargeted ? 'target-cell' : ''}`}
                     onClick={() => handleCellClick(ri, ci)}
                     data-row={ri}
                     data-col={ci}
