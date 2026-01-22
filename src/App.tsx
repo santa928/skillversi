@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOthello } from './hooks/useOthello';
 import { VFXLayer } from './components/VFXLayer';
-import { BOARD_SIZE, getFlippableDiscs, hasValidMoves, isCorner, isValidMove } from './utils/gameLogic';
-import type { Player, SkillType } from './utils/gameLogic';
+import { BOARD_SIZE, applyMove, getFlippableDiscs, getScore, hasValidMoves, isCorner, isValidMove } from './utils/gameLogic';
+import type { Board, Player, SkillType } from './utils/gameLogic';
 import './index.css';
 
 const SKILL_NAMES: Record<SkillType, string> = {
@@ -67,7 +67,7 @@ function App() {
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [mode, setMode] = useState<'pvp' | 'cpu'>('pvp');
   const [cpuPlayer, setCpuPlayer] = useState<Player>('white');
-  const [cpuLevel, setCpuLevel] = useState<'easy' | 'normal'>('normal');
+  const [cpuLevel, setCpuLevel] = useState<'easy' | 'normal' | 'hard'>('normal');
   const cpuTimerRef = useRef<number | null>(null);
   const cpuBusyRef = useRef(false);
 
@@ -225,22 +225,26 @@ function App() {
     resetGame();
   };
 
-  const handleCpuLevelChange = (next: 'easy' | 'normal') => {
+  const handleCpuLevelChange = (next: 'easy' | 'normal' | 'hard') => {
     setCpuLevel(next);
   };
 
-  const getValidMovesFor = useCallback((player: Player) => {
+  const getValidMovesForBoard = useCallback((boardState: Board, player: Player) => {
     const moves: { row: number; col: number }[] = [];
     const protection = getProtectionFor(player);
     for (let r = 0; r < BOARD_SIZE; r++) {
       for (let c = 0; c < BOARD_SIZE; c++) {
-        if (isValidMove(board, player, r, c, protection)) {
+        if (isValidMove(boardState, player, r, c, protection)) {
           moves.push({ row: r, col: c });
         }
       }
     }
     return moves;
-  }, [board, getProtectionFor]);
+  }, [getProtectionFor]);
+
+  const getValidMovesFor = useCallback((player: Player) => {
+    return getValidMovesForBoard(board, player);
+  }, [board, getValidMovesForBoard]);
 
   const scoreMove = useCallback((player: Player, row: number, col: number) => {
     const protection = getProtectionFor(player);
@@ -251,23 +255,97 @@ function App() {
     return score;
   }, [board, getProtectionFor]);
 
+  const evaluateBoard = useCallback((boardState: Board, player: Player) => {
+    const opponent: Player = player === 'black' ? 'white' : 'black';
+    const { black, white } = getScore(boardState);
+    const discScore = player === 'black' ? black - white : white - black;
+
+    const corners: Array<[number, number]> = [
+      [0, 0],
+      [0, BOARD_SIZE - 1],
+      [BOARD_SIZE - 1, 0],
+      [BOARD_SIZE - 1, BOARD_SIZE - 1]
+    ];
+    let cornerScore = 0;
+    for (const [r, c] of corners) {
+      if (boardState[r][c] === player) cornerScore += 25;
+      else if (boardState[r][c] === opponent) cornerScore -= 25;
+    }
+
+    let edgeScore = 0;
+    for (let i = 1; i < BOARD_SIZE - 1; i++) {
+      const top = boardState[0][i];
+      const bottom = boardState[BOARD_SIZE - 1][i];
+      const left = boardState[i][0];
+      const right = boardState[i][BOARD_SIZE - 1];
+
+      if (top === player) edgeScore += 2;
+      else if (top === opponent) edgeScore -= 2;
+      if (bottom === player) edgeScore += 2;
+      else if (bottom === opponent) edgeScore -= 2;
+      if (left === player) edgeScore += 2;
+      else if (left === opponent) edgeScore -= 2;
+      if (right === player) edgeScore += 2;
+      else if (right === opponent) edgeScore -= 2;
+    }
+
+    const mobilityScore = (getValidMovesForBoard(boardState, player).length - getValidMovesForBoard(boardState, opponent).length) * 3;
+
+    return discScore + cornerScore + edgeScore + mobilityScore;
+  }, [getValidMovesForBoard]);
+
   const chooseMove = useCallback((player: Player) => {
     const moves = getValidMovesFor(player);
     if (moves.length === 0) return null;
     if (cpuLevel === 'easy') {
       return moves[Math.floor(Math.random() * moves.length)];
     }
+    if (cpuLevel === 'normal') {
+      let best = moves[0];
+      let bestScore = scoreMove(player, best.row, best.col);
+      for (const move of moves.slice(1)) {
+        const score = scoreMove(player, move.row, move.col);
+        if (score > bestScore) {
+          bestScore = score;
+          best = move;
+        }
+      }
+      return best;
+    }
+
+    const protection = getProtectionFor(player);
+    const opponent: Player = player === 'black' ? 'white' : 'black';
     let best = moves[0];
-    let bestScore = scoreMove(player, best.row, best.col);
-    for (const move of moves.slice(1)) {
-      const score = scoreMove(player, move.row, move.col);
+    let bestScore = -Infinity;
+
+    for (const move of moves) {
+      const nextBoard = applyMove(board, player, move.row, move.col, protection);
+      let score = evaluateBoard(nextBoard, player);
+
+      const opponentMoves = getValidMovesForBoard(nextBoard, opponent);
+      if (opponentMoves.length > 0) {
+        const opponentProtection = getProtectionFor(opponent);
+        let worstReply = Infinity;
+        for (const opponentMove of opponentMoves) {
+          const replyBoard = applyMove(nextBoard, opponent, opponentMove.row, opponentMove.col, opponentProtection);
+          const replyScore = evaluateBoard(replyBoard, player);
+          if (replyScore < worstReply) {
+            worstReply = replyScore;
+          }
+        }
+        score = (score + worstReply) / 2;
+      } else {
+        score += 12;
+      }
+
       if (score > bestScore) {
         bestScore = score;
         best = move;
       }
     }
+
     return best;
-  }, [cpuLevel, getValidMovesFor, scoreMove]);
+  }, [board, cpuLevel, evaluateBoard, getProtectionFor, getValidMovesFor, getValidMovesForBoard, scoreMove]);
 
   const evaluateSkillTargets = useCallback((player: Player, skill: SkillType) => {
     let bestTarget: { row: number; col: number } | null = null;
@@ -371,8 +449,10 @@ function App() {
     if (cpuLevel === 'easy') {
       const chance = bestSkill === 'double' ? 0.4 : 0.3;
       if (Math.random() > chance && bestMoveScore > 0) return null;
-    } else {
+    } else if (cpuLevel === 'normal') {
       if (bestScore < bestMoveScore + 5 && bestMoveScore > 0) return null;
+    } else {
+      if (bestScore < bestMoveScore - 5 && bestMoveScore > 0) return null;
     }
 
     return { skill: bestSkill, target: bestTarget };
@@ -468,9 +548,10 @@ function App() {
             </label>
             <label>
               <span>LEVEL</span>
-              <select value={cpuLevel} onChange={(e) => handleCpuLevelChange(e.target.value as 'easy' | 'normal')}>
+              <select value={cpuLevel} onChange={(e) => handleCpuLevelChange(e.target.value as 'easy' | 'normal' | 'hard')}>
                 <option value="easy">Easy</option>
                 <option value="normal">Normal</option>
+                <option value="hard">Hard</option>
               </select>
             </label>
           </>
