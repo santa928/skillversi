@@ -4,24 +4,32 @@ import sharp from 'sharp'
 
 const root = process.cwd()
 const svgPath = path.join(root, 'public', 'icon.svg')
-const outDir = path.join(root, 'public', 'pwa')
+const publicDir = path.join(root, 'public')
+const pwaDir = path.join(publicDir, 'pwa')
 
-await mkdir(outDir, { recursive: true })
+await mkdir(pwaDir, { recursive: true })
 
 const svg = await readFile(svgPath)
 
 const background = { r: 15, g: 15, b: 19, alpha: 1 }
 
 const targets = [
-  { name: 'icon-192.png', size: 192, maskable: false },
-  { name: 'icon-512.png', size: 512, maskable: false },
-  { name: 'icon-180.png', size: 180, maskable: false },
-  { name: 'icon-192-maskable.png', size: 192, maskable: true },
-  { name: 'icon-512-maskable.png', size: 512, maskable: true },
+  { name: 'icon-192.png', size: 192, maskable: false, dir: pwaDir },
+  { name: 'icon-512.png', size: 512, maskable: false, dir: pwaDir },
+  { name: 'icon-180.png', size: 180, maskable: false, dir: pwaDir },
+  { name: 'icon-192-maskable.png', size: 192, maskable: true, dir: pwaDir },
+  { name: 'icon-512-maskable.png', size: 512, maskable: true, dir: pwaDir },
+  { name: 'apple-touch-icon.png', size: 180, maskable: false, dir: publicDir },
+  {
+    name: 'apple-touch-icon-precomposed.png',
+    size: 180,
+    maskable: false,
+    dir: publicDir,
+  },
 ]
 
-for (const { name, size, maskable } of targets) {
-  const filePath = path.join(outDir, name)
+for (const { name, size, maskable, dir } of targets) {
+  const filePath = path.join(dir, name)
   if (!maskable) {
     const buffer = await sharp(svg)
       .resize(size, size, { fit: 'contain', background })

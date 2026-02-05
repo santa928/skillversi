@@ -16,6 +16,8 @@ export default defineConfig({
         'pwa/icon-512.png',
         'pwa/icon-192-maskable.png',
         'pwa/icon-512-maskable.png',
+        'apple-touch-icon.png',
+        'apple-touch-icon-precomposed.png',
       ],
       manifest: {
         name: 'SkillVersi',
